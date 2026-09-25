@@ -1,0 +1,6 @@
+@{ ViewData["Title"] = "Backup / Restore"; }
+<div class="page-title"><h1>Backup / Restore</h1><p>Download or restore the local SQLite database.</p></div>
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+<div class="card"><h3>Download Backup</h3><p>This exports the current autotracker.db file.</p><a asp-action="Download" class="btn">Download Backup</a></div>
+<div class="card"><h3>Restore Backup</h3><p>This replaces the current database. A safety copy is created automatically first.</p><form asp-action="Restore" method="post" enctype="multipart/form-data"><input type="file" name="backupFile" accept=".db" /><button class="btn danger">Restore Database</button></form></div>

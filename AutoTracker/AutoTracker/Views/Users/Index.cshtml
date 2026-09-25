@@ -1,0 +1,53 @@
+@model List<AutoTracker.Models.AppUser>
+@{
+    ViewData["Title"] = "Users";
+    var roles = ViewBag.Roles as string[] ?? new[] { "Administrator", "Workshop Manager", "Receptionist", "Technician" };
+    var isAdmin = ViewBag.CurrentUserIsAdmin as bool? ?? false;
+    var currentUserId = ViewBag.CurrentUserId as int? ?? 0;
+    var manageableRoles = isAdmin ? roles : roles.Where(r => r is "Receptionist" or "Technician").ToArray();
+}
+<div class="page-title"><div><h1>Users</h1><p>Create staff accounts, manage roles and revoke access.</p></div></div>
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+<section class="card">
+    <h3>Add User</h3>
+    <form asp-action="Create" method="post" class="form-grid three">
+        <div><label>Full Name</label><input name="fullName" required /></div>
+        <div><label>Email</label><input name="email" type="email" required autocomplete="off" /></div>
+        <div><label>Temporary Password</label><input name="password" type="password" minlength="8" required autocomplete="new-password" /></div>
+        <div><label>Role</label><select name="role">@foreach (var role in manageableRoles) { <option value="@role">@role</option> }</select></div>
+        <label class="check"><input type="checkbox" name="isActive" value="true" checked /> Active</label>
+        <div><button class="btn btn-primary">Create User</button></div>
+    </form>
+</section>
+<section class="card">
+    <h3>Company User List</h3>
+    <div class="table-responsive"><table class="table user-table">
+        <thead><tr><th>Name / Email</th><th>Role</th><th>Active</th><th>Last Login</th><th>New Password</th><th>Actions</th></tr></thead>
+        <tbody>
+        @foreach (var user in Model)
+        {
+            var canEdit = isAdmin || user.Role is "Receptionist" or "Technician";
+            var formId = $"user-{user.Id}";
+            if (canEdit) { <form id="@formId" asp-action="UpdateUser" method="post"><input type="hidden" name="id" value="@user.Id" /></form> }
+            <tr>
+                <td>@if (canEdit) { <input form="@formId" name="fullName" value="@user.FullName" required /><input form="@formId" name="email" type="email" value="@user.Email" required /> } else { <strong>@user.FullName</strong><small class="muted">@user.Email</small> }</td>
+                <td>@if (canEdit) { <select form="@formId" name="role">@foreach (var role in manageableRoles) { <option value="@role" selected="@(role == user.Role)">@role</option> }</select> } else { @user.Role }</td>
+                <td>@if (canEdit) { <label class="check"><input form="@formId" type="checkbox" name="isActive" value="true" checked="@user.IsActive" disabled="@(user.Id == currentUserId)" /> @(user.IsActive ? "Active" : "Inactive")</label>@if (user.Id == currentUserId) { <input form="@formId" type="hidden" name="isActive" value="true" /> } } else { @(user.IsActive ? "Yes" : "No") }</td>
+                <td>@(user.LastLoginAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "Never")</td>
+                <td>@if (canEdit) { <input form="@formId" name="newPassword" type="password" minlength="8" placeholder="Leave blank" autocomplete="new-password" /> } else { <span class="muted">Administrator only</span> }</td>
+                <td>
+                    <div class="action-row">
+                    @if (canEdit) { <button form="@formId" class="btn btn-sm btn-primary">Save</button> }
+                    @if (canEdit && user.Id != currentUserId)
+                    {
+                        <form asp-action="RevokeSessions" method="post"><input type="hidden" name="id" value="@user.Id" /><button class="btn btn-sm secondary">Revoke Sessions</button></form>
+                        @if (user.IsActive) { <form asp-action="Delete" method="post" onsubmit="return confirm('Deactivate this user and revoke all sessions?');"><input type="hidden" name="id" value="@user.Id" /><button class="btn btn-sm danger">Deactivate</button></form> }
+                    }
+                    </div>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+</section>

@@ -1,0 +1,147 @@
+@model List<AutoTracker.Models.RepairJob>
+
+@{
+    ViewData["Title"] = "Workshop Board";
+    var statuses = ViewBag.Statuses as List<string> ?? new List<string>();
+}
+
+<div class="dashboard-header">
+    <div>
+        <h1>Live Workshop Board</h1>
+        <p>Drag vehicles between stages to update the repair workflow.</p>
+    </div>
+
+    <a asp-controller="RepairJobs" asp-action="Create" class="btn btn-primary">+ New Repair</a>
+</div>
+
+<div id="boardMessage"></div>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+<div class="workflow-board">
+    @foreach (var status in statuses)
+    {
+        var jobs = Model.Where(j => j.Status == status).ToList();
+
+        <div class="workflow-column drop-zone" data-status="@status">
+            <div class="workflow-column-header">
+                <strong>@status</strong>
+                <span>@jobs.Count</span>
+            </div>
+
+            @foreach (var job in jobs)
+            {
+                <div class="workflow-card draggable-card" draggable="true" data-job-id="@job.Id">
+                    <h5>@job.Vehicle?.RegNumber</h5>
+                    <p>@job.Vehicle?.Make @job.Vehicle?.ModelName</p>
+                    <p>@job.Client?.FullName</p>
+                    <small>RFID: @(string.IsNullOrWhiteSpace(job.RfidTagCode) ? "None" : job.RfidTagCode)</small>
+
+                    <div class="workflow-actions">
+                        <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@job.Id" class="btn btn-sm btn-secondary">
+                            Open
+                        </a>
+                    </div>
+
+                    <form asp-action="MoveStatus" method="post" class="mt-2">
+                        <input type="hidden" name="id" value="@job.Id" />
+
+                        <select name="newStatus" class="form-control form-control-sm">
+                            @foreach (var moveStatus in statuses)
+                            {
+                                if (moveStatus == job.Status)
+                                {
+                                    <option value="@moveStatus" selected>@moveStatus</option>
+                                }
+                                else
+                                {
+                                    <option value="@moveStatus">@moveStatus</option>
+                                }
+                            }
+                        </select>
+
+                        <button type="submit" class="btn btn-sm btn-primary mt-2 w-100">Move</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    @Html.AntiForgeryToken()
+    <script>
+        let draggedCard = null;
+
+        document.querySelectorAll(".draggable-card").forEach(card => {
+            card.addEventListener("dragstart", function () {
+                draggedCard = this;
+                this.classList.add("dragging");
+            });
+
+            card.addEventListener("dragend", function () {
+                this.classList.remove("dragging");
+            });
+        });
+
+        document.querySelectorAll(".drop-zone").forEach(zone => {
+            zone.addEventListener("dragover", function (e) {
+                e.preventDefault();
+                this.classList.add("drag-over");
+            });
+
+            zone.addEventListener("dragleave", function () {
+                this.classList.remove("drag-over");
+            });
+
+            zone.addEventListener("drop", async function (e) {
+                e.preventDefault();
+                this.classList.remove("drag-over");
+
+                if (!draggedCard) return;
+
+                const jobId = draggedCard.dataset.jobId;
+                const newStatus = this.dataset.status;
+
+                const response = await fetch("/WorkshopBoard/MoveStatusAjax", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
+                    },
+                    body: JSON.stringify({
+                        jobId: parseInt(jobId),
+                        newStatus: newStatus
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.appendChild(draggedCard);
+                    showBoardMessage("Job moved successfully.", "success");
+                    setTimeout(() => location.reload(), 700);
+                } else {
+                    showBoardMessage(result.message, "danger");
+                }
+            });
+        });
+
+        function showBoardMessage(message, type) {
+            const host = document.getElementById("boardMessage");
+            host.replaceChildren();
+            const notice = document.createElement("div");
+            notice.className = `alert alert-${type === "success" ? "success" : "danger"}`;
+            notice.textContent = message;
+            host.appendChild(notice);
+        }
+    </script>
+}

@@ -1,0 +1,12 @@
+@model Vehicle
+@{ ViewData["Title"] = "Add Vehicle"; }
+<div class="title">Add Vehicle</div>
+<form asp-action="Create" method="post" class="form card">
+<label>Client</label><select asp-for="ClientId" asp-items="ViewBag.ClientId"></select>
+<label>REG number</label><input asp-for="RegNumber" />
+<label>Vehicle type</label><input asp-for="VehicleType" placeholder="Car, bakkie, SUV..." />
+<label>Make</label><input asp-for="Make" />
+<label>Model</label><input asp-for="ModelName" />
+<label>VIN number</label><input asp-for="VinNumber" />
+<button class="btn">Save Vehicle</button>
+</form>

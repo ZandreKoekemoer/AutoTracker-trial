@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>@ViewData["Title"] - AutoTracker</title>
+    <link rel="manifest" href="~/manifest.webmanifest" />
+    <link rel="icon" href="~/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="~/icons/icon-192.png" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site-improvements.css" asp-append-version="true" />
+</head>
+@{
+    var navRole = Context.Session.GetString("UserRole") ?? "";
+    var isTechnician = navRole == "Technician";
+    var isAdminOrManager = navRole == "Administrator" || navRole == "Workshop Manager";
+    var isAdmin = navRole == "Administrator";
+    var loggedIn = User.Identity?.IsAuthenticated == true;
+}
+<body class="@(loggedIn ? "app-shell" : "public-shell")">
+    <button type="button" id="themeToggle" class="theme-toggle floating-theme" aria-label="Toggle light or dark mode">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9c0-.5-.04-1-.12-1.48A7 7 0 0 1 13.48 3.12C13 3.04 12.5 3 12 3Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <span>Theme</span>
+    </button>
+    @if (loggedIn)
+    {
+        <button type="button" id="navToggle" class="nav-toggle" aria-controls="sidebar" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span>Menu</span>
+        </button>
+        <div id="navBackdrop" class="nav-backdrop" hidden></div>
+        <aside id="sidebar" class="sidebar" aria-label="Main navigation">
+            <div class="brand">AutoTracker</div>
+            <div class="nav-label">Main</div>
+            <a asp-controller="Home" asp-action="Index">Dashboard</a>
+            @if (!isTechnician)
+            {
+                <a asp-controller="Clients" asp-action="Index">Clients</a>
+                <a asp-controller="Vehicles" asp-action="Index">Vehicles</a>
+            }
+            <a asp-controller="RepairJobs" asp-action="Index">Repair Jobs</a>
+            @if (!isTechnician)
+            {
+                <a asp-controller="Search" asp-action="Index">Search</a>
+                <a asp-controller="Calendar" asp-action="Index">Calendar</a>
+            }
+            @if (isAdminOrManager)
+            {
+                <div class="nav-label">Workshop</div>
+                <a asp-controller="Notifications" asp-action="Index">Alerts</a>
+                <a asp-controller="Reports" asp-action="Index">Reports</a>
+                <a asp-controller="WorkshopBoard" asp-action="Index">Workshop Board</a>
+                <a asp-controller="RfidTags" asp-action="Index">RFID / QR Tags</a>
+                <a asp-controller="Users" asp-action="Index">Users</a>
+            }
+            @if (isAdminOrManager) { <a asp-controller="Technicians" asp-action="Index">User Jobs</a> }
+            @if (isAdmin)
+            {
+                <div class="nav-label">Admin</div>
+                <a asp-controller="CompanySettings" asp-action="Index">Company Settings</a>
+                <a asp-controller="Backup" asp-action="Index">Backup / Restore</a>
+            }
+            <div class="nav-label">Account</div>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="nav-form">
+                <button type="submit" class="nav-logout">Log out</button>
+            </form>
+        </aside>
+    }
+    <main class="main @(loggedIn ? "" : "public-main")">
+        @RenderBody()
+    </main>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/zxing-browser.min.js" asp-append-version="true" defer></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,64 @@
+@model AutoTracker.Models.RfidTag
+
+@{
+    ViewData["Title"] = "RFID History";
+}
+
+<h1>RFID History</h1>
+
+<div class="card p-3 mb-3">
+    <h3>@Model.TagCode</h3>
+
+    @if (Model.CurrentRepairJob != null)
+    {
+        <p><strong>Current Job:</strong> @Model.CurrentRepairJob.Vehicle?.RegNumber - @Model.CurrentRepairJob.Client?.FullName</p>
+        <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@Model.CurrentRepairJobId" class="btn btn-primary">
+            Open Current Repair
+        </a>
+    }
+    else
+    {
+        <p>No current repair assigned.</p>
+    }
+</div>
+
+<div class="card p-3">
+    <h4>Previous / Current Assignments</h4>
+
+    @if (Model.History.Any())
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Vehicle</th>
+                    <th>Client</th>
+                    <th>Assigned</th>
+                    <th>Removed</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.History.OrderByDescending(h => h.AssignedAt))
+                {
+                    <tr>
+                        <td>@item.RepairJob?.Vehicle?.RegNumber</td>
+                        <td>@item.RepairJob?.Client?.FullName</td>
+                        <td>@item.AssignedAt.ToString("dd MMM yyyy HH:mm")</td>
+                        <td>@(item.RemovedAt?.ToString("dd MMM yyyy HH:mm") ?? "Current")</td>
+                        <td>
+                            <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@item.RepairJobId" class="btn btn-sm btn-secondary">
+                                Open
+                            </a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No RFID history yet.</p>
+    }
+</div>
+
+<a asp-controller="RepairJobs" asp-action="Index" class="btn btn-secondary mt-3">Back to Repairs</a>

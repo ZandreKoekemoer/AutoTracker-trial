@@ -1,0 +1,10 @@
+@model Client
+@{ ViewData["Title"] = "Add Client"; }
+<div class="title">Add Client</div>
+<form asp-action="Create" method="post" class="form card">
+<label>Full name</label><input asp-for="FullName" />
+<label>Phone</label><input asp-for="Phone" />
+<label>Email</label><input asp-for="Email" />
+<label>Address</label><textarea asp-for="Address"></textarea>
+<button class="btn">Save Client</button>
+</form>

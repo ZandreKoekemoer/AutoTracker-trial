@@ -1,0 +1,28 @@
+@model AutoTracker.ViewModels.CalendarViewModel
+@{
+    ViewData["Title"] = "Workshop Calendar";
+    var firstDay = new DateTime(Model.CurrentMonth.Year, Model.CurrentMonth.Month, 1);
+    var daysInMonth = DateTime.DaysInMonth(Model.CurrentMonth.Year, Model.CurrentMonth.Month);
+    var startOffset = (int)firstDay.DayOfWeek;
+    var prevMonth = Model.CurrentMonth.AddMonths(-1);
+    var nextMonth = Model.CurrentMonth.AddMonths(1);
+}
+<div class="dashboard-header"><div><h1>Workshop Calendar</h1><p>Bookings, completion dates and custom reminders.</p></div><div><a asp-action="Index" asp-route-year="@prevMonth.Year" asp-route-month="@prevMonth.Month" class="btn secondary">Previous</a><a asp-action="Index" asp-route-year="@nextMonth.Year" asp-route-month="@nextMonth.Month" class="btn">Next</a></div></div>
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+<div class="card form-wide"><h3>Add Calendar Entry</h3><form asp-action="CreateEvent" method="post" class="form-grid three"><div><label>Title</label><input name="title" /></div><div><label>Start time</label><input name="startTime" type="datetime-local" /></div><div><label>End time</label><input name="endTime" type="datetime-local" /></div><div style="grid-column:1/-1"><label>Description</label><input name="description" /></div><button class="btn">Save Calendar Entry</button></form></div>
+<h3>@Model.CurrentMonth.ToString("MMMM yyyy")</h3>
+<div class="calendar-grid">
+<div class="calendar-head">Sun</div><div class="calendar-head">Mon</div><div class="calendar-head">Tue</div><div class="calendar-head">Wed</div><div class="calendar-head">Thu</div><div class="calendar-head">Fri</div><div class="calendar-head">Sat</div>
+@for (int i = 0; i < startOffset; i++){<div class="calendar-day empty"></div>}
+@for (int day = 1; day <= daysInMonth; day++)
+{
+    var date = new DateTime(Model.CurrentMonth.Year, Model.CurrentMonth.Month, day);
+    var jobsForDay = Model.Jobs.Where(j => j.EstimatedCompletionDate?.Date == date.Date).ToList();
+    var eventsForDay = Model.Events.Where(e => e.StartTime.Date == date.Date).ToList();
+    <div class="calendar-day"><strong>@day</strong>
+    @foreach (var job in jobsForDay){<a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@job.Id" class="calendar-job">@job.EstimatedCompletionDate?.ToString("HH:mm") @job.Vehicle?.RegNumber - @job.Status</a>}
+    @foreach (var ev in eventsForDay){ if(ev.RepairJobId.HasValue){<a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@ev.RepairJobId" class="calendar-job manual">@ev.StartTime.ToString("HH:mm") @ev.Title</a>} else {<div class="calendar-job manual">@ev.StartTime.ToString("HH:mm") @ev.Title<br/><small>@ev.Description</small></div>} }
+    </div>
+}
+</div>

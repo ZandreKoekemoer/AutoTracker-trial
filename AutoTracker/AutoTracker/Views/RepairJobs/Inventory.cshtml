@@ -1,0 +1,91 @@
+@model AutoTracker.Models.RepairJob
+@{
+    ViewData["Title"] = "Inventory";
+    var parts = Model.Parts?.OrderBy(p => p.Status == "Fitted" || p.Status == "Received").ThenBy(p => p.Description).ToList() ?? new List<AutoTracker.Models.Part>();
+    var checkedCount = parts.Count(p => p.Status == "Received" || p.Status == "Fitted");
+    var total = parts.Count;
+    var progress = total > 0 ? checkedCount * 100 / total : 0;
+    var missing = parts.Where(p => p.Status is "Required" or "Ordered").ToList();
+    var role = Context.Session.GetString("UserRole") ?? "";
+    var canEditParts = role != "Technician";
+    var canDeleteParts = role is "Administrator" or "Workshop Manager";
+    var statuses = new[] { "Required", "Ordered", "Received", "Fitted", "Cancelled" };
+}
+<div class="page-title"><div><h1>Inventory - @Model.Vehicle?.RegNumber</h1><p>Manage quoted parts, suppliers, actual costs and receiving status.</p></div><a asp-action="Details" asp-route-id="@Model.Id" class="btn secondary">Back to Job</a></div>
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+
+<section class="card">
+    <h3>Completion</h3>
+    @if (total == 0) { <p>No parts are recorded yet.</p> }
+    else
+    {
+        <p><strong>@checkedCount / @total</strong> parts received or fitted — @progress%</p>
+        <div class="progress" aria-label="Inventory completion" aria-valuenow="@progress" aria-valuemin="0" aria-valuemax="100"><div style="width:@progress%"></div></div>
+        @if (missing.Any())
+        {
+            <div class="alert warning"><strong>Still outstanding:</strong><ul>@foreach (var part in missing) { <li>@part.Description (@part.Status)@(part.CriticalPart ? " — critical" : "")</li> }</ul></div>
+        }
+    }
+</section>
+
+@if (canEditParts)
+{
+<section class="card">
+    <h3>Add Part</h3>
+    <form asp-controller="Parts" asp-action="AddPart" method="post" class="form-grid three">
+        <input type="hidden" name="RepairJobId" value="@Model.Id" />
+        <div><label>Part number</label><input name="PartNumber" /></div>
+        <div><label>Description</label><input name="Description" required /></div>
+        <div><label>Supplier</label><input name="Supplier" /></div>
+        <div><label>Quantity</label><input name="Quantity" type="number" min="1" step="1" value="1" required /></div>
+        <div><label>Quoted unit price</label><input name="QuotedUnitPrice" type="number" min="0" step="0.01" value="0" /></div>
+        <div><label>Actual unit cost</label><input name="ActualUnitCost" type="number" min="0" step="0.01" value="0" /></div>
+        <div><label>Status</label><select name="Status">@foreach (var status in statuses) { <option value="@status">@status</option> }</select></div>
+        <div><label>Notes</label><input name="Notes" /></div>
+        <div class="stack"><label class="check"><input type="checkbox" name="CriticalPart" value="true" /> Critical part</label><label class="check"><input type="checkbox" name="InvoiceUploaded" value="true" /> Invoice received</label></div>
+        <div><button class="btn btn-primary">Add Part</button></div>
+    </form>
+</section>
+}
+
+<section class="card">
+    <h3>Parts</h3>
+    @if (!parts.Any()) { <p class="muted">Parts added from the quote or this page will appear here.</p> }
+    else
+    {
+        @if (canEditParts)
+        {
+            @foreach (var part in parts) { <form id="part-@part.Id" asp-controller="Parts" asp-action="UpdatePart" method="post"><input type="hidden" name="Id" value="@part.Id" /><input type="hidden" name="RepairJobId" value="@Model.Id" /></form> }
+        }
+        <div class="table-responsive">
+        <table class="table inventory-table">
+            <thead><tr><th>Part</th><th>Qty</th>@if (canEditParts) { <th>Quoted</th><th>Actual</th><th>Supplier</th> }<th>Status</th>@if (canEditParts) { <th>Flags</th><th>Notes</th><th>Actions</th> }</tr></thead>
+            <tbody>
+            @foreach (var part in parts)
+            {
+                var formId = $"part-{part.Id}";
+                <tr>
+                    <td>@if (canEditParts) { <input form="@formId" name="PartNumber" value="@part.PartNumber" placeholder="Part #" /><input form="@formId" name="Description" value="@part.Description" required aria-label="Description" /> } else { <strong>@part.Description</strong><small class="muted">@part.PartNumber</small> }</td>
+                    <td>@if (canEditParts) { <input form="@formId" name="Quantity" type="number" min="1" step="1" value="@part.Quantity" /> } else { @part.Quantity }</td>
+                    @if (canEditParts)
+                    {
+                        <td><input form="@formId" name="QuotedUnitPrice" type="number" min="0" step="0.01" value="@part.QuotedUnitPrice" /></td>
+                        <td><input form="@formId" name="ActualUnitCost" type="number" min="0" step="0.01" value="@part.ActualUnitCost" /></td>
+                        <td><input form="@formId" name="Supplier" value="@part.Supplier" /></td>
+                        <td><select form="@formId" name="Status">@foreach (var status in statuses) { <option value="@status" selected="@(status == part.Status)">@status</option> }</select></td>
+                        <td><label class="check"><input form="@formId" type="checkbox" name="CriticalPart" value="true" checked="@part.CriticalPart" /> Critical</label><label class="check"><input form="@formId" type="checkbox" name="InvoiceUploaded" value="true" checked="@part.InvoiceUploaded" /> Invoice</label></td>
+                        <td><input form="@formId" name="Notes" value="@part.Notes" /></td>
+                        <td><button form="@formId" class="btn btn-primary btn-sm">Save</button>@if (canDeleteParts) { <form asp-controller="Parts" asp-action="DeletePart" method="post" onsubmit="return confirm('Remove this part from inventory?');"><input type="hidden" name="id" value="@part.Id" /><button class="btn danger btn-sm">Remove</button></form> }</td>
+                    }
+                    else
+                    {
+                        <td><form asp-controller="Parts" asp-action="UpdateStatus" method="post"><input type="hidden" name="id" value="@part.Id" /><input type="hidden" name="repairJobId" value="@Model.Id" /><select name="status" onchange="this.form.submit()">@foreach (var status in statuses) { <option value="@status" selected="@(status == part.Status)">@status</option> }</select></form></td>
+                    }
+                </tr>
+            }
+            </tbody>
+        </table>
+        </div>
+    }
+</section>

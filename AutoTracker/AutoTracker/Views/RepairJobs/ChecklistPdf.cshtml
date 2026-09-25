@@ -1,0 +1,30 @@
+@model AutoTracker.Models.RepairJob
+@{
+    Layout = null;
+    var items = ViewBag.ChecklistItems as List<AutoTracker.Models.ChecklistItem> ?? new List<AutoTracker.Models.ChecklistItem>();
+    var settings = ViewBag.CompanySettings as AutoTracker.Models.CompanySetting ?? new AutoTracker.Models.CompanySetting();
+}
+<!DOCTYPE html>
+<html>
+<head>
+<title>Checklist</title>
+<style>
+body{font-family:Arial,sans-serif;padding:28px;color:#111}.print-btn{margin-bottom:16px}.header{display:grid;grid-template-columns:1fr 1fr;gap:20px;border-bottom:3px solid #111;padding-bottom:14px;margin-bottom:18px}.logo{max-height:70px;max-width:180px;object-fit:contain;background:transparent}.vehicle-info{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}.box{border:1px solid #bbb;padding:10px}.section-title{background:#111;color:#fff;padding:8px 12px;margin-top:20px}table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:7px}th{background:#eee}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:45px;margin-top:50px}.line{border-top:1px solid #111;padding-top:7px;text-align:center}.company-signature img{max-height:45px;max-width:160px}@@media print{.print-btn{display:none}body{padding:0}}
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+<div class="header"><div>@if(!string.IsNullOrWhiteSpace(settings.LogoPath)){<img class="logo" src="@settings.LogoPath" />}<h1>@settings.CompanyName</h1><p>@settings.Address<br/>Tel: @settings.Phone<br/>@settings.Email<br/>VAT: @settings.VatNumber</p></div><div><h2>VEHICLE CHECKLIST</h2><p><strong>Date:</strong> @DateTime.Now.ToString("dd MMM yyyy")</p><p><strong>Job:</strong> @Model.Id</p><p><strong>Status:</strong> @Model.Status</p></div></div>
+<div class="vehicle-info"><div class="box"><strong>Client</strong><br/>@Model.Client?.FullName<br/>@Model.Client?.Phone<br/>@Model.Client?.Email</div><div class="box"><strong>Vehicle</strong><br/>@Model.Vehicle?.RegNumber<br/>@Model.Vehicle?.Make @Model.Vehicle?.ModelName<br/>@Model.Vehicle?.VehicleType</div><div class="box"><strong>VIN / RFID</strong><br/>@Model.Vehicle?.VinNumber<br/>@Model.RfidTagCode</div></div>
+@foreach (var group in items.GroupBy(x => x.Section))
+{
+<h3 class="section-title">@group.Key</h3><table><thead><tr><th>Item</th><th>Condition</th><th>Notes</th></tr></thead><tbody>@foreach (var item in group){<tr><td>@item.ItemName</td><td>@item.Condition</td><td>@item.Notes</td></tr>}</tbody></table>
+}
+@if (!string.IsNullOrWhiteSpace(settings.ChecklistFooterText))
+{
+    <p>@settings.ChecklistFooterText</p>
+}
+<div class="signatures"><div class="line">Worker Signature</div><div class="line">Customer Signature</div></div>
+<div class="company-signature">@if(!string.IsNullOrWhiteSpace(settings.CompanySignaturePath)){<img src="@settings.CompanySignaturePath" />}<br/>@settings.CompanySignatureName</div>
+</body>
+</html>

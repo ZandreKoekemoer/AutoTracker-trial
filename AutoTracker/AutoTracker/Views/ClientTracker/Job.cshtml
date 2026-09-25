@@ -1,0 +1,63 @@
+@model AutoTracker.ViewModels.ClientTrackingViewModel
+@{
+    ViewData["Title"] = "Repair status";
+}
+<div class="public-page">
+    <div class="page-title">
+        <div><h1>@Model.RegistrationNumber repair tracker</h1><p>Reference @Model.RepairReference</p></div>
+        <span class="status-badge">@Model.Status</span>
+    </div>
+
+    <div class="grid two">
+        <section class="card">
+            <h2>Vehicle</h2>
+            <p><strong>@Model.VehicleDescription</strong></p>
+            <p>Registration: @Model.RegistrationNumber</p>
+            <p>Estimated completion: @(Model.EstimatedCompletionDate?.ToString("dd MMM yyyy") ?? "Not set yet")</p>
+        </section>
+        <section class="card">
+            <h2>Workshop</h2>
+            <p><strong>@Model.WorkshopName</strong></p>
+            @if (!string.IsNullOrWhiteSpace(Model.WorkshopPhone)) { <p>@Model.WorkshopPhone</p> }
+            @if (!string.IsNullOrWhiteSpace(Model.WorkshopEmail)) { <p>@Model.WorkshopEmail</p> }
+            <p class="muted">Last updated @Model.LastUpdated.ToString("dd MMM yyyy HH:mm")</p>
+        </section>
+    </div>
+
+    <section class="card">
+        <h2>Progress updates</h2>
+        @if (Model.Updates.Count == 0)
+        {
+            <p class="muted">No client updates have been shared yet.</p>
+        }
+        else
+        {
+            <div class="timeline-list">
+                @foreach (var update in Model.Updates)
+                {
+                    <article><strong>@update.CreatedAt.ToString("dd MMM yyyy")</strong><p>@update.Message</p></article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="card">
+        <h2>Approved photos</h2>
+        @if (Model.Photos.Count == 0)
+        {
+            <p class="muted">No photos have been shared yet.</p>
+        }
+        else
+        {
+            <div class="photo-grid">
+                @foreach (var photo in Model.Photos)
+                {
+                    <a class="photo-card" asp-action="Media" asp-route-token="@Model.Token" asp-route-id="@photo.Id" target="_blank" rel="noreferrer">
+                        <img src="@Url.Action("Media", new { token = Model.Token, id = photo.Id })" alt="Approved repair photo" loading="lazy" />
+                        @if (!string.IsNullOrWhiteSpace(photo.Notes)) { <span>@photo.Notes</span> }
+                    </a>
+                }
+            </div>
+        }
+    </section>
+</div>

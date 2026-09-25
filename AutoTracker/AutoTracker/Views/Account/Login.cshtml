@@ -1,0 +1,32 @@
+@model AutoTracker.ViewModels.LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+}
+<div class="login-page">
+    <section class="login-card" aria-labelledby="login-title">
+        <div class="login-brand">AutoTracker</div>
+        <h1 id="login-title">Sign in</h1>
+        <p class="muted">Use your workshop account to continue.</p>
+
+        @if (TempData["Info"] != null) { <div class="alert info" role="status">@TempData["Info"]</div> }
+        <form asp-action="Login" method="post" class="login-form">
+            <div asp-validation-summary="ModelOnly" class="validation-summary" role="alert"></div>
+            <div>
+                <label asp-for="Email">Email address</label>
+                <input asp-for="Email" class="form-control" autocomplete="username" inputmode="email" autofocus />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+            <div>
+                <label asp-for="Password">Password</label>
+                <input asp-for="Password" type="password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+            <label class="check remember-me"><input asp-for="RememberMe" /> Keep me signed in on this device</label>
+            <button type="submit" class="btn btn-primary login-submit">Sign in</button>
+        </form>
+        @if (ViewBag.CanRegister as bool? == true)
+        {
+            <p class="first-run">First setup? <a asp-action="Register">Create the administrator account</a>.</p>
+        }
+    </section>
+</div>

@@ -1,0 +1,482 @@
+@model AutoTracker.Models.RepairJob
+
+@{
+    ViewData["Title"] = "Repair Details";
+    var missing = ViewBag.Missing as List<string> ?? new List<string>();
+    var statuses = ViewBag.Statuses as List<string> ?? new List<string>();
+    var availableTags = ViewBag.AvailableRfidTags as List<AutoTracker.Models.RfidTag> ?? new List<AutoTracker.Models.RfidTag>();
+    var appUsers = ViewBag.AppUsers as List<AutoTracker.Models.AppUser> ?? new List<AutoTracker.Models.AppUser>();
+    var trackingAccess = ViewBag.TrackingAccess as AutoTracker.Models.ClientTrackingAccess;
+    var trackingLink = TempData["TrackingLink"] as string;
+    var trackingWhatsappUrl = TempData["TrackingWhatsAppUrl"] as string;
+
+    var documentCount = Model.Documents?.Count ?? 0;
+    var photoCount = Model.Photos?.Count ?? 0;
+    var timelineCount = Model.TimelineEntries?.Count ?? 0;
+    var auditCount = Model.AuditLogs?.Count ?? 0;
+    var partsCount = Model.Parts?.Count ?? 0;
+
+    var _detailRole = Context.Session.GetString("UserRole") ?? "";
+    var _isTech = _detailRole == "Technician";
+    var _notTech = !_isTech;
+    var _canAssign = _detailRole == "Administrator" || _detailRole == "Workshop Manager";
+}
+
+<h1>Repair Job</h1>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success">@TempData["Success"]</div>
+}
+
+@if (TempData["Info"] != null)
+{
+    <div class="alert alert-info">@TempData["Info"]</div>
+}
+
+<div class="card p-3 mb-3">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h3>@Model.Vehicle?.RegNumber - @Model.Vehicle?.Make @Model.Vehicle?.ModelName</h3>
+            <p><strong>Client:</strong> @Model.Client?.FullName</p>
+            <p><strong>RFID Tag:</strong> @(string.IsNullOrWhiteSpace(Model.RfidTagCode) ? "None" : Model.RfidTagCode)</p>
+            <p><strong>Assigned User:</strong> @(string.IsNullOrWhiteSpace(Model.AssignedTechnician) ? "Unassigned" : Model.AssignedTechnician)</p>
+            <p><strong>Status:</strong> <span class="badge bg-dark">@Model.Status</span></p>
+            <p><strong>Created:</strong> @Model.CreatedAt.ToString("dd MMM yyyy")</p>
+        </div>
+
+        <div>
+            <a asp-controller="WorkshopBoard" asp-action="Index" class="btn btn-secondary">Workshop Board</a>
+        </div>
+    </div>
+</div>
+
+@if (missing.Any())
+{
+    <div class="alert alert-warning">
+        <strong>Missing requirements:</strong>
+        <ul class="mb-0">
+            @foreach (var item in missing)
+            {
+                <li>@item</li>
+            }
+        </ul>
+    </div>
+}
+
+<div class="card p-3 mb-3">
+    <h4>Job Workspace</h4>
+
+    <div class="row g-3">
+        @if (_notTech)
+        {
+            <div class="col-md-2">
+                <a asp-action="Quote" asp-route-id="@Model.Id" class="btn btn-primary w-100">Quote</a>
+            </div>
+        }
+        <div class="col-md-2">
+            <a asp-action="Checklist" asp-route-id="@Model.Id" class="btn btn-primary w-100">Checklist</a>
+        </div>
+        @if (_notTech)
+        {
+            <div class="col-md-2">
+                <a asp-action="Documents" asp-route-id="@Model.Id" class="btn btn-primary w-100">Documents</a>
+            </div>
+        }
+        <div class="col-md-2">
+            <a asp-action="Inventory" asp-route-id="@Model.Id" class="btn btn-primary w-100">Inventory</a>
+        </div>
+        <div class="col-md-2">
+            <a asp-action="Photos" asp-route-id="@Model.Id" class="btn btn-primary w-100">Photos</a>
+        </div>
+        <div class="col-md-2">
+            <a asp-action="Timeline" asp-route-id="@Model.Id" class="btn btn-primary w-100">Timeline</a>
+        </div>
+    </div>
+</div>
+
+@if (_notTech)
+{
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Quote Total</h5>
+            <h3>R @(Model.Quote?.Total.ToString("N2") ?? "0.00")</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Actual Cost</h5>
+            <h3>R @Model.ActualTotalCost.ToString("N2")</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Profit</h5>
+            <h3>R @Model.Profit.ToString("N2")</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Margin</h5>
+            <h3>@Model.ProfitMargin.ToString("N2")%</h3>
+        </div>
+    </div>
+</div>
+}
+
+
+<div class="card p-3 mb-3">
+    <h4>Quick Status Update</h4>
+
+    <form asp-action="UpdateStatus" method="post">
+        <input type="hidden" name="id" value="@Model.Id" />
+
+        <select name="status" class="form-control">
+            @foreach (var status in statuses.Where(status => (status != "Collected" || Model.Status == "Collected") && (status != "Archived" || Model.Status == "Collected")))
+            {
+                if (status == Model.Status)
+                {
+                    <option value="@status" selected>@status</option>
+                }
+                else
+                {
+                    <option value="@status">@status</option>
+                }
+            }
+        </select>
+
+        <label class="mt-2">Client note</label>
+        <textarea name="clientNote" class="form-control" placeholder="Optional note included in the WhatsApp update"></textarea>
+        <p class="privacy-note mt-2">If selected, AutoTracker opens WhatsApp with a prepared message. Nothing is sent until you review it and press Send in WhatsApp.</p>
+        <label class="check"><input type="checkbox" name="notifyClient" value="true" /> Open WhatsApp after saving</label>
+        <button type="submit" class="btn btn-primary mt-2">Update Status</button>
+    </form>
+</div>
+
+@if (_notTech)
+{
+<div class="card p-3 mb-3">
+    <h4>Client Tracking Access</h4>
+    <p class="text-muted">Create a random, expiring link for the client. Creating a new link revokes the previous one.</p>
+    @if (!string.IsNullOrWhiteSpace(trackingLink))
+    {
+        <div class="tracking-link-box mb-3">
+            <label for="trackingLink">New tracking link — copy it now</label>
+            <input id="trackingLink" value="@trackingLink" readonly />
+            <div class="action-row">
+                <button type="button" class="btn secondary" onclick="navigator.clipboard.writeText(document.getElementById('trackingLink').value)">Copy Link</button>
+                @if (!string.IsNullOrWhiteSpace(trackingWhatsappUrl))
+                {
+                    <a href="@trackingWhatsappUrl" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Share via WhatsApp</a>
+                }
+            </div>
+            <p class="privacy-note">WhatsApp receives the prepared message only when you open the link; review it before sending.</p>
+        </div>
+    }
+    @if (trackingAccess != null && trackingAccess.ExpiresAtUtc > DateTime.UtcNow)
+    {
+        <p><strong>Active until:</strong> @trackingAccess.ExpiresAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</p>
+        <form asp-action="RevokeClientTracking" method="post">
+            <input type="hidden" name="repairJobId" value="@Model.Id" />
+            <button class="btn danger">Revoke Client Access</button>
+        </form>
+    }
+    else { <p class="muted">No active client tracking link.</p> }
+    <form asp-action="GenerateClientTracking" method="post" class="action-row mt-2">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+        <label for="validDays">Valid days</label>
+        <input id="validDays" name="validDays" type="number" min="1" max="90" value="14" />
+        <button class="btn btn-primary">Generate New Link</button>
+    </form>
+</div>
+}
+
+@if (_canAssign)
+{
+<div class="card p-3 mb-3">
+    <h4>Assigned User</h4>
+    <form asp-action="AssignUser" method="post" class="d-flex gap-2">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+        <select name="assignedUserId" class="form-control">
+            <option value="">-- Unassigned --</option>
+            @foreach (var user in appUsers)
+            {
+                <option value="@user.Id" selected="@(Model.AssignedTechnicianUserId == user.Id)">@user.FullName</option>
+            }
+        </select>
+        <button class="btn btn-primary">Save Assigned User</button>
+    </form>
+</div>
+}
+
+@if (_notTech)
+{
+<div class="card p-3 mb-3">
+    <h4>RFID Tag</h4>
+    <p class="text-muted">Use the camera scanner when the tag has a printed QR/barcode. For plain RFID/NFC chips, use the hardware reader/manual code or dropdown.</p>
+
+    <div class="mb-2">
+        <button type="button" class="btn btn-secondary" onclick="startTagScanner('rfidVideoDetails','rfidTagInputDetails','rfidScanMessageDetails')">Scan QR / Barcode</button>
+        <button type="button" class="btn btn-secondary" onclick="stopTagScanner('rfidVideoDetails')">Stop Camera</button>
+        <div id="rfidScanMessageDetails" class="mt-2" aria-live="polite"></div>
+        <video id="rfidVideoDetails" class="scanner-video" hidden playsinline muted></video>
+    </div>
+
+    <form asp-action="AssignRfid" method="post">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+
+        <label>RFID Tag Code</label>
+        <input id="rfidTagInputDetails" name="tagCode" value="@Model.RfidTagCode" list="available-rfid-tags" class="form-control" placeholder="Scan, type, or choose tag" />
+        <datalist id="available-rfid-tags">
+            @foreach (var tag in availableTags)
+            {
+                <option value="@tag.TagCode"></option>
+            }
+        </datalist>
+
+        <button type="submit" class="btn btn-primary mt-2">Assign / Change RFID Tag</button>
+    </form>
+
+    @if (!string.IsNullOrWhiteSpace(Model.RfidTagCode))
+    {
+        <form asp-action="RemoveRfid" method="post" class="mt-2">
+            <input type="hidden" name="repairJobId" value="@Model.Id" />
+            <button type="submit" class="btn btn-danger">Remove RFID From Job</button>
+        </form>
+
+        <a asp-controller="RfidTags" asp-action="Details" asp-route-tagCode="@Model.RfidTagCode" class="btn btn-secondary mt-2">
+            View RFID History
+        </a>
+    }
+</div>
+}
+
+@if (_notTech)
+{
+<div class="card p-3 mb-3">
+    <h4>Customer Authorization Signature</h4>
+
+    @if (Model.CustomerSignatures != null && Model.CustomerSignatures.Any())
+    {
+        <div class="mb-3">
+            @foreach (var sig in Model.CustomerSignatures.OrderByDescending(s => s.SignedAt))
+            {
+                <div class="border rounded p-2 mb-2">
+                    <strong>@sig.CustomerName</strong>
+                    <small>@sig.SignedAt.ToString("dd MMM yyyy HH:mm")</small>
+                    <br />
+                    <img src="@sig.SignaturePath" style="max-width:300px;border:1px solid #ddd;border-radius:8px;margin-top:8px;" />
+                </div>
+            }
+        </div>
+    }
+
+    <form asp-action="SaveSignature" method="post" onsubmit="return saveSignatureData();">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+        <input type="hidden" name="signatureData" id="signatureData" />
+
+        <label>Customer Name</label>
+        <input name="customerName" class="form-control mb-2" value="@Model.Client?.FullName" />
+
+        <canvas id="signaturePad" width="600" height="220" style="border:1px solid #ccc;border-radius:10px;width:100%;max-width:600px;background:white;"></canvas>
+
+        <div class="mt-2">
+            <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear</button>
+            <button type="submit" class="btn btn-primary">Save Authorization Signature</button>
+        </div>
+    </form>
+</div>
+}
+
+<div class="row mb-3">
+    @if (_notTech)
+    {
+        <div class="col-md-3">
+            <div class="card p-3">
+                <h5>Documents</h5>
+                <h3>@documentCount</h3>
+                <a asp-action="Documents" asp-route-id="@Model.Id">Open Documents</a>
+            </div>
+        </div>
+    }
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Photos</h5>
+            <h3>@photoCount</h3>
+            <a asp-action="Photos" asp-route-id="@Model.Id">Open Gallery</a>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Inventory</h5>
+            <h3>@(Model.Parts?.Count(p => p.Status == "Received" || p.Status == "Fitted") ?? 0) / @partsCount</h3>
+            <a asp-action="Inventory" asp-route-id="@Model.Id">Open Inventory</a>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card p-3">
+            <h5>Timeline</h5>
+            <h3>@timelineCount</h3>
+            <a asp-action="Timeline" asp-route-id="@Model.Id">Open Timeline</a>
+        </div>
+    </div>
+</div>
+
+@if (_notTech)
+{
+<div class="card p-3 mb-3">
+    <h4>Vehicle Collection Signature</h4>
+    @if (!string.IsNullOrWhiteSpace(Model.CollectionSignaturePath))
+    {
+        <div class="border rounded p-3 mb-2">
+            <strong>@Model.CollectionCustomerName</strong>
+            <small>@Model.CollectedAt?.ToString("dd MMM yyyy HH:mm")</small><br />
+            <img src="@Model.CollectionSignaturePath" style="max-width:300px;border:1px solid var(--line);border-radius:8px;margin-top:8px;background:white;" />
+        </div>
+    }
+    <form asp-action="SaveCollectionSignature" method="post" onsubmit="return saveCollectionSignatureData();">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+        <input type="hidden" name="signatureData" id="collectionSignatureData" />
+        <label>Customer Name</label>
+        <input name="customerName" value="@Model.Client?.FullName" />
+        <canvas id="collectionSignaturePad" width="600" height="220" style="border:1px solid #ccc;border-radius:10px;width:100%;max-width:600px;background:white;"></canvas>
+        <div class="mt-2"><button type="button" class="btn secondary" onclick="clearCollectionSignature()">Clear</button><button type="submit" class="btn">Save Collection Signature & Mark Collected</button></div>
+    </form>
+</div>
+}
+
+<div class="card p-3 mb-3">
+    <h4>Recent Activity</h4>
+
+    @if (Model.AuditLogs != null && Model.AuditLogs.Any())
+    {
+        <ul>
+            @foreach (var log in Model.AuditLogs.OrderByDescending(l => l.CreatedAt).Take(8))
+            {
+                <li>
+                    <strong>@log.CreatedAt.ToString("dd MMM yyyy HH:mm")</strong>
+                    - @log.UserName: @log.Action
+                </li>
+            }
+        </ul>
+
+        <a asp-action="Timeline" asp-route-id="@Model.Id" class="btn btn-secondary">View Full Timeline</a>
+    }
+    else
+    {
+        <p>No activity yet.</p>
+    }
+</div>
+
+<a asp-action="Index" class="btn btn-secondary">Back</a>
+@*
+// Reference: Signature Pad – HTML5 canvas based smooth signature drawing
+// According to Szimek (2025), Signature Pad can capture a drawn signature from an HTML canvas and convert it into image data using toDataURL().
+// I used this reference to capture the customer's signature as a PNG image.
+*@
+<script>
+    const canvas = document.getElementById("signaturePad");
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+
+    function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+
+        if (e.touches && e.touches.length > 0) {
+            return {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        }
+
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+
+    function startDrawing(e) {
+        drawing = true;
+        const pos = getPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(e) {
+        if (!drawing) return;
+        e.preventDefault();
+
+        const pos = getPos(e);
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+    }
+
+    function stopDrawing() {
+        drawing = false;
+    }
+
+    canvas.addEventListener("mousedown", startDrawing);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("mouseup", stopDrawing);
+    canvas.addEventListener("mouseleave", stopDrawing);
+
+    canvas.addEventListener("touchstart", startDrawing);
+    canvas.addEventListener("touchmove", draw);
+    canvas.addEventListener("touchend", stopDrawing);
+
+    function clearSignature() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveSignatureData() {
+        document.getElementById("signatureData").value = canvas.toDataURL("image/png");
+        return true;
+    }
+
+    const collectionCanvas = document.getElementById("collectionSignaturePad");
+    if (collectionCanvas) {
+        const cctx = collectionCanvas.getContext("2d");
+        let cdrawing = false;
+        function cpos(e){ const r=collectionCanvas.getBoundingClientRect(); const t=e.touches&&e.touches.length?e.touches[0]:e; return {x:t.clientX-r.left,y:t.clientY-r.top}; }
+        function cstart(e){ cdrawing=true; const p=cpos(e); cctx.beginPath(); cctx.moveTo(p.x,p.y); }
+        function cdraw(e){ if(!cdrawing)return; e.preventDefault(); const p=cpos(e); cctx.lineWidth=2; cctx.lineCap="round"; cctx.lineTo(p.x,p.y); cctx.stroke(); }
+        function cstop(){ cdrawing=false; }
+        collectionCanvas.addEventListener("mousedown",cstart); collectionCanvas.addEventListener("mousemove",cdraw); collectionCanvas.addEventListener("mouseup",cstop); collectionCanvas.addEventListener("mouseleave",cstop);
+        collectionCanvas.addEventListener("touchstart",cstart); collectionCanvas.addEventListener("touchmove",cdraw); collectionCanvas.addEventListener("touchend",cstop);
+        window.clearCollectionSignature=function(){cctx.clearRect(0,0,collectionCanvas.width,collectionCanvas.height)};
+        window.saveCollectionSignatureData=function(){document.getElementById("collectionSignatureData").value=collectionCanvas.toDataURL("image/png");return true};
+    }
+
+    @*
+    // Reference: BarcodeDetector API – MDN Web Docs
+    // According to MDN Web Docs (2026), BarcodeDetector can detect supported barcodes from visual media such as video.
+    // I used this approach to scan the RFID/QR tag using the device camera.
+    *@
+
+</script>
+@*
+/*
+
+ZXing. 2026. ZXing Browser – barcode and QR code scanning from a camera [Source code].
+Available at:https://github.com/zxing-js/browser
+[Accessed 14 July  2026].
+
+Szimek. 2025. Signature Pad – HTML5 canvas based smooth signature drawing [Source code].
+Available at:https://github.com/szimek/signature_pad
+[Accessed 14 July 2026].
+
+
+MDN Web Docs. 2026. BarcodeDetector API [Source code].
+Available at:
+https://developer.mozilla.org/en-US/docs/Web/API/BarcodeDetector
+[Accessed 14 July 2026].
+*/
+*@

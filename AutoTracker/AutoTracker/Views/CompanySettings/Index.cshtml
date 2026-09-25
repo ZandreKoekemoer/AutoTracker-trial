@@ -1,0 +1,221 @@
+@model AutoTracker.Models.CompanySetting
+
+@{
+    ViewData["Title"] = "Company Settings";
+}
+
+<div class="page-title">
+    <h1>Company Settings</h1>
+    <p>These details print on every estimate, checklist and workshop document.</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert success">@TempData["Success"]</div>
+}
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert danger">
+        <strong>Settings could not save:</strong>
+        <ul>
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <li>@error.ErrorMessage</li>
+            }
+        </ul>
+    </div>
+}
+
+<form asp-action="Index" method="post" enctype="multipart/form-data" class="card form-wide">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="LogoPath" />
+    <input type="hidden" asp-for="CompanySignaturePath" />
+
+    <h3>Business Details</h3>
+
+    <div class="form-grid">
+        <div>
+            <label>Business Name</label>
+            <input asp-for="CompanyName" />
+
+            <label>Address</label>
+            <textarea asp-for="Address"></textarea>
+
+            <label>Phone</label>
+            <input asp-for="Phone" />
+
+            <label>Email</label>
+            <input asp-for="Email" />
+
+            <label>Website</label>
+            <input asp-for="Website" />
+        </div>
+
+        <div>
+            <label>VAT Number</label>
+            <input asp-for="VatNumber" />
+
+            <label>CK / Company Number</label>
+            <input asp-for="CKNumber" />
+
+            <label>Registration Number</label>
+            <input asp-for="RegistrationNumber" />
+
+            <label>VAT Percentage</label>
+            <input asp-for="VatPercentage" type="number" step="0.01" />
+
+            <label>Default Theme</label>
+            <select asp-for="ThemeMode">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </div>
+    </div>
+
+    <h3>Logo & Signature</h3>
+
+    <div class="form-grid">
+        <div>
+            <label>Company Logo</label>
+
+            @if (!string.IsNullOrWhiteSpace(Model.LogoPath))
+            {
+                <div class="preview-logo">
+                    <img src="@Model.LogoPath" />
+                </div>
+            }
+
+            <input type="file" name="logoFile" accept="image/*" />
+        </div>
+
+        <div>
+            <label>Company Signature Name</label>
+            <input asp-for="CompanySignatureName" />
+
+            <label>Company Signature</label>
+
+            @if (!string.IsNullOrWhiteSpace(Model.CompanySignaturePath))
+            {
+                <div class="preview-logo">
+                    <img src="@Model.CompanySignaturePath" />
+                </div>
+            }
+
+            <canvas id="companySignaturePad"
+                    width="450"
+                    height="180"
+                    style="border:1px solid #ccc;background:white;border-radius:6px;">
+            </canvas>
+
+            <input type="hidden" id="CompanySignatureData" name="CompanySignatureData" />
+
+            <button type="button" class="btn" onclick="clearCompanySignature()">
+                Clear Signature
+            </button>
+
+            <p style="font-size:12px;opacity:.75;margin-top:8px;">
+                Draw a new signature only when you want to replace the saved company signature.
+            </p>
+        </div>
+    </div>
+
+    <h3>Rates & Defaults</h3>
+
+    <div class="form-grid three">
+        <div>
+            <label>Labour rate per hour</label>
+            <input asp-for="LabourRatePerHour" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Paint rate per panel</label>
+            <input asp-for="PaintRatePerPanel" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Strip & Assemble rate per hour</label>
+            <input asp-for="StripAssembleRatePerHour" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Mechanical rate per hour</label>
+            <input asp-for="MechanicalRatePerHour" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Panel beating rate per hour</label>
+            <input asp-for="PanelBeatingRatePerHour" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Default consumables</label>
+            <input asp-for="DefaultConsumables" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Default sundries</label>
+            <input asp-for="DefaultSundries" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Default freight</label>
+            <input asp-for="DefaultFreight" type="number" step="0.01" />
+        </div>
+
+        <div>
+            <label>Default waste disposal</label>
+            <input asp-for="DefaultWasteDisposal" type="number" step="0.01" />
+        </div>
+    </div>
+
+    <h3>Numbering & Print Text</h3>
+
+    <div class="form-grid">
+        <div>
+            <label>Quote Prefix</label>
+            <input asp-for="QuotePrefix" />
+
+            <label>Invoice Prefix</label>
+            <input asp-for="InvoicePrefix" />
+
+            <label>Banking Details</label>
+            <textarea asp-for="BankingDetails"></textarea>
+        </div>
+
+        <div>
+            <label>Quote Terms / Footer</label>
+            <textarea asp-for="QuoteFooterText"></textarea>
+
+            <label>Checklist Footer</label>
+            <textarea asp-for="ChecklistFooterText"></textarea>
+        </div>
+    </div>
+
+    <button type="submit" class="btn">Save Company Settings</button>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+@*// Reference: Signature Pad – HTML5 canvas based smooth signature drawing
+// According to Szimek (2025), Signature Pad provides methods for creating, checking and exporting a drawn signature.
+// I used this reference to implement the company's electronic signature.*@
+<script>
+    const companyCanvas = document.getElementById("companySignaturePad");
+    const companySignaturePad = new SignaturePad(companyCanvas);
+
+    document.querySelector("form").addEventListener("submit", function () {
+        if (!companySignaturePad.isEmpty()) {
+            document.getElementById("CompanySignatureData").value =
+                companySignaturePad.toDataURL("image/png");
+        }
+    });
+
+    function clearCompanySignature() {
+        companySignaturePad.clear();
+    }
+</script>
+@*
+Szimek. 2025. Signature Pad – HTML5 canvas based smooth signature drawing [Source code].
+Available at:https://github.com/szimek/signature_pad
+[Accessed 14 July 2026].
+*@

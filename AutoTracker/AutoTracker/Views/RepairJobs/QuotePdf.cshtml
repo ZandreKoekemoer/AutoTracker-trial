@@ -1,0 +1,90 @@
+@model AutoTracker.Models.RepairJob
+@{
+    Layout = null;
+    var quote = Model.Quote;
+    var settings = ViewBag.CompanySettings as AutoTracker.Models.CompanySetting ?? new AutoTracker.Models.CompanySetting();
+    var items = quote?.LineItems?.OrderBy(x => x.SortOrder).ToList() ?? new List<AutoTracker.Models.QuoteLineItem>();
+    var parts = items.Where(x => x.Section == "Parts").ToList();
+    var labour = items.Where(x => x.Section == "Labour").ToList();
+    var paint = items.Where(x => x.Section == "Paint").ToList();
+    var strip = items.Where(x => x.Section == "StripAndAssemble").ToList();
+}
+<!DOCTYPE html>
+<html>
+<head>
+<title>Estimate @quote?.QuoteNumber</title>
+<style>
+body{font-family:Arial,sans-serif;color:#111;margin:18px;font-size:12px}.print-btn{margin-bottom:12px}@@media print{.print-btn{display:none}body{margin:0}}.top{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:start}.logo{max-height:55px;max-width:160px;object-fit:contain;background:transparent}.center{text-align:center}.box{border:1px solid #aaa;padding:6px;min-height:70px}.estimate-title{border:1px solid #999;padding:5px;font-size:18px;font-weight:bold}.small{font-size:11px}.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;margin-top:8px}.info-grid .box{min-height:90px}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border:1px solid #bbb;padding:4px;vertical-align:top}th{background:#eee;font-weight:bold}.totals{width:310px;margin-left:auto}.totals td:first-child{font-weight:bold}.terms{font-size:11px;margin-top:10px}.accepted{text-align:center;margin-top:18px;font-size:16px;font-weight:bold}.signatures{display:grid;grid-template-columns:1fr 1fr 1fr;gap:30px;margin-top:55px;text-align:center}.line{border-top:1px solid #111;padding-top:6px}.company-signature img{max-height:45px;max-width:160px}.money{text-align:right}.labour-summary{width:360px;float:left;margin-top:10px}.clearfix{clear:both}
+</style>
+</head>
+<body>
+  @*
+  // Reference: Window.print() – MDN Web Docs
+  // According to MDN Web Docs (2026), window.print() opens the browser's print dialog for the current document.
+  // I used this functionality to allow the completed repair estimate to be printed or saved as a PDF from the browser.
+  *@
+<button class="print-btn" onclick="window.print()">Print / Save PDF</button>
+<div class="top">
+  <div>
+    @if(!string.IsNullOrWhiteSpace(settings.LogoPath)){<img class="logo" src="@settings.LogoPath" />}
+    <h3>@settings.CompanyName</h3>
+<div>@settings.Address</div>
+<div>Tel: @settings.Phone</div>
+<div>Email: @settings.Email</div>
+<div>VAT: @settings.VatNumber</div>
+<div>CK: @settings.CKNumber</div>
+  </div>
+  <div class="center"><div class="estimate-title">Estimate Preview&nbsp;&nbsp; @quote?.QuoteNumber</div><div>Vat Reg No: @settings.VatNumber</div></div>
+  <div><strong>@settings.CompanyName</strong><br/>@settings.Address<br/>CK NO: @settings.CKNumber<br/>@settings.Email<br/>Date: @quote?.QuoteDate.ToString("dd/MM/yyyy")<br/>Page No 1</div>
+</div>
+<div class="info-grid">
+  <div class="box"><strong>@Model.Client?.FullName</strong><br/>@Model.Client?.Address<br/>@Model.Client?.Phone<br/>@Model.Client?.Email</div>
+  <div class="box">@Model.Vehicle?.VehicleType<br/>Registration: @Model.Vehicle?.RegNumber<br/>Chassis No: @Model.Vehicle?.VinNumber</div>
+  <div class="box">Owner Phone: @Model.Client?.Phone<br/>RFID: @Model.RfidTagCode<br/>Ref: @Model.AssignedTechnician</div>
+</div>
+<table>
+<thead><tr><th>Method</th><th>Parts</th><th>QTY</th><th>Price</th><th>Labour Code</th><th>Hrs</th><th>Value</th><th>Paint Pnls</th><th>Value</th><th>Strip Code</th><th>Hrs</th><th>Value</th></tr></thead>
+<tbody>
+@{
+    var max = Math.Max(Math.Max(parts.Count, labour.Count), Math.Max(paint.Count, strip.Count));
+    if(max == 0){max = 1;}
+    for(var i=0;i<max;i++){
+        var p = i < parts.Count ? parts[i] : null;
+        var l = i < labour.Count ? labour[i] : null;
+        var pa = i < paint.Count ? paint[i] : null;
+        var st = i < strip.Count ? strip[i] : null;
+<tr>
+<td>@p?.Method</td><td>@p?.Description</td><td class="money">@p?.Quantity.ToString("N2")</td><td class="money">@p?.UnitPrice.ToString("N2")</td>
+<td>@l?.Code</td><td class="money">@l?.Hours.ToString("N2")</td><td class="money">@l?.Value.ToString("N2")</td>
+<td class="money">@pa?.Panels.ToString("N2")</td><td class="money">@pa?.Value.ToString("N2")</td>
+<td>@st?.Code</td><td class="money">@st?.Hours.ToString("N2")</td><td class="money">@st?.Value.ToString("N2")</td>
+</tr>
+    }
+}
+</tbody>
+</table>
+<table class="labour-summary"><tr><th>Labour</th><th>Hours</th><th>Total</th></tr><tr><td>Labour/Repairs</td><td>@labour.Sum(x=>x.Hours).ToString("N2")</td><td>@(quote?.Labour.ToString("N2"))</td></tr><tr><td>Paint/Spray</td><td>@paint.Sum(x=>x.Panels).ToString("N2")</td><td>@(quote?.Paint.ToString("N2"))</td></tr><tr><td>Strip & Assemble</td><td>@strip.Sum(x=>x.Hours).ToString("N2")</td><td>@(quote?.StripAndAssemble.ToString("N2"))</td></tr></table>
+<table class="totals"><tr><td>Spares</td><td class="money">@(quote?.Parts.ToString("N2"))</td></tr><tr><td>Labour</td><td class="money">@(quote?.Labour.ToString("N2"))</td></tr><tr><td>Paint</td><td class="money">@(quote?.Paint.ToString("N2"))</td></tr><tr><td>Strip & Assemble</td><td class="money">@(quote?.StripAndAssemble.ToString("N2"))</td></tr><tr><td>Consumables</td><td class="money">@(quote?.Consumables.ToString("N2"))</td></tr><tr><td>Sublet</td><td class="money">@(quote?.Sublet.ToString("N2"))</td></tr><tr><td>Discount</td><td class="money">@(quote?.Discount.ToString("N2"))</td></tr><tr><td>SubTotal</td><td class="money">@(quote?.Subtotal.ToString("N2"))</td></tr><tr><td>Vat</td><td class="money">@(quote?.Vat.ToString("N2"))</td></tr><tr><td>Total</td><td class="money"><strong>@(quote?.Total.ToString("N2"))</strong></td></tr></table>
+<div class="clearfix"></div>
+<div class="terms">
+    @(string.IsNullOrWhiteSpace(settings.QuoteFooterText)
+        ? quote?.Terms
+        : settings.QuoteFooterText)
+</div>
+@if(!string.IsNullOrWhiteSpace(settings.BankingDetails)){<div class="terms"><strong>Banking:</strong> @settings.BankingDetails</div>}
+<div class="accepted">Accepted by:</div>
+<div class="signatures"><div class="line">Client signature</div><div class="line">Client name</div><div class="line">Date accepted</div></div>
+<div class="company-signature">@if(!string.IsNullOrWhiteSpace(settings.CompanySignaturePath)){<img src="@settings.CompanySignaturePath" />}<br/>@settings.CompanySignatureName</div>
+</body>
+</html>
+
+@*
+/*
+
+MDN Web Docs. 2026. Window: print() method [Source code].
+Available at:
+https://developer.mozilla.org/en-US/docs/Web/API/Window/print
+[Accessed 14 July 2026].
+
+*/
+*@

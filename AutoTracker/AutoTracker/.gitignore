@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+*.user
+*.db-wal
+*.db-shm
+autotracker_before_restore_*.db
+wwwroot/uploads/
+AutoTracker.Tests/bin/
+AutoTracker.Tests/obj/
+qa-artifacts/

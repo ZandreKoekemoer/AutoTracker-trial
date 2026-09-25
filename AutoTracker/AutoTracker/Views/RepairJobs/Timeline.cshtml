@@ -1,0 +1,82 @@
+@model AutoTracker.Models.RepairJob
+
+@{
+    ViewData["Title"] = "Timeline";
+}
+
+<h1>Timeline - @Model.Vehicle?.RegNumber</h1>
+
+<a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-secondary mb-3">Back to Job</a>
+
+<div class="card p-3 mb-3">
+    <h4>Add Timeline Entry</h4>
+
+    <form asp-action="AddTimelineEntry" method="post">
+        <input type="hidden" name="repairJobId" value="@Model.Id" />
+
+        <label>Type</label>
+        <select name="entryType" class="form-control mb-2">
+            <option>Note</option>
+            <option>Customer Call</option>
+            <option>WhatsApp Update</option>
+            <option>Email</option>
+            <option>Internal Update</option>
+            <option>Parts Update</option>
+            <option>Collection Update</option>
+        </select>
+
+        <label>Message</label>
+        <textarea name="message" class="form-control mb-2" placeholder="Write update here..." required></textarea>
+        @if ((Context.Session.GetString("UserRole") ?? "") != "Technician")
+        {
+            <label class="check"><input type="checkbox" name="isClientVisible" value="true" /> Show this update in client tracking</label>
+        }
+
+        <button type="submit" class="btn btn-primary">Add Entry</button>
+    </form>
+</div>
+
+<div class="card p-3 mb-3">
+    <h4>Communication Log</h4>
+
+    @if (Model.TimelineEntries != null && Model.TimelineEntries.Any())
+    {
+        <ul class="activity-list">
+            @foreach (var entry in Model.TimelineEntries.OrderByDescending(x => x.CreatedAt))
+            {
+                <li>
+                    <div>
+                        <strong>@entry.CreatedAt.ToString("dd MMM yyyy HH:mm")</strong>
+                        <span>@entry.EntryType - @entry.CreatedBy @if (entry.IsClientVisible) { <strong>· Client visible</strong> }</span>
+                        <p>@entry.Message</p>
+                    </div>
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No timeline entries yet.</p>
+    }
+</div>
+
+<div class="card p-3 mb-3">
+    <h4>Audit Log</h4>
+
+    @if (Model.AuditLogs != null && Model.AuditLogs.Any())
+    {
+        <ul>
+            @foreach (var log in Model.AuditLogs.OrderByDescending(l => l.CreatedAt))
+            {
+                <li>
+                    <strong>@log.CreatedAt.ToString("dd MMM yyyy HH:mm")</strong>
+                    - @log.UserName: @log.Action
+                </li>
+            }
+        </ul>
+    }
+    else
+    {
+        <p>No audit logs yet.</p>
+    }
+</div>

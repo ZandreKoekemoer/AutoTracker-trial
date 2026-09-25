@@ -1,0 +1,4 @@
+@model Client
+@{ ViewData["Title"] = "Client Details"; }
+<div class="hero"><div><div class="title">@Model.FullName</div><div class="subtitle">@Model.Phone • @Model.Email</div></div><a class="btn" asp-controller="Vehicles" asp-action="Create">Add Vehicle</a></div>
+<div class="card"><h2>Vehicles & Repair History</h2><table class="table"><tr><th>REG</th><th>Vehicle</th><th>Repairs</th></tr>@foreach(var v in Model.Vehicles){<tr><td>@v.RegNumber</td><td>@v.Make @v.ModelName @v.VehicleType</td><td>@v.RepairJobs.Count</td></tr>}</table></div>

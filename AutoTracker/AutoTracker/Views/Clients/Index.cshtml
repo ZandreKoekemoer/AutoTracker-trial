@@ -1,0 +1,5 @@
+@model IEnumerable<Client>
+@{ ViewData["Title"] = "Clients"; }
+<div class="hero"><div><div class="title">Clients</div><div class="subtitle">Each client can have multiple vehicles and repair histories.</div></div><a class="btn" asp-action="Create">Add Client</a></div>
+<form><input name="search" placeholder="Search clients..." /></form>
+<table class="table"><tr><th>Name</th><th>Phone</th><th>Email</th><th>Vehicles</th><th></th></tr>@foreach(var c in Model){<tr><td>@c.FullName</td><td>@c.Phone</td><td>@c.Email</td><td>@c.Vehicles.Count</td><td><a class="btn secondary" asp-action="Details" asp-route-id="@c.Id">Open</a></td></tr>}</table>

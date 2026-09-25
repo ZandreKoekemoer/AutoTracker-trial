@@ -1,0 +1,17 @@
+@model AutoTracker.ViewModels.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+<h1>Create Account</h1>
+<div class="card p-3 mb-3"><p>The first registered account becomes the company owner. After that, new accounts are created as inactive technicians until an owner/admin activates them.</p></div>
+<form asp-action="Register" method="post" class="form-box">
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <label>Full Name</label>
+    <input asp-for="FullName" class="form-control" />
+    <label>Email</label>
+    <input asp-for="Email" class="form-control" />
+    <label>Password</label>
+    <input asp-for="Password" type="password" class="form-control" />
+    <input asp-for="Role" type="hidden" value="Technician" />
+    <button type="submit" class="btn btn-primary mt-3">Create Account</button>
+</form>

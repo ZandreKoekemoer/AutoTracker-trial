@@ -1,0 +1,46 @@
+@model AutoTracker.Models.RepairJob
+@{
+    ViewData["Title"] = "Photos";
+    var categories = new[] { "Before Photos", "Final Photos" };
+    var role = Context.Session.GetString("UserRole") ?? "";
+    var canPublish = role != "Technician";
+}
+<div class="page-title"><div><h1>Photos - @Model.Vehicle?.RegNumber</h1><p>Upload workshop photos and choose which ones clients may see.</p></div><a asp-action="Details" asp-route-id="@Model.Id" class="btn secondary">Back to Job</a></div>
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+@foreach (var category in categories)
+{
+    var photos = Model.Photos.Where(p => p.Category == category).OrderByDescending(p => p.UploadedAt).ToList();
+    <section class="card">
+        <h3>@category</h3>
+        <form asp-action="UploadPhotos" method="post" enctype="multipart/form-data" class="upload-box stack">
+            <input type="hidden" name="repairJobId" value="@Model.Id" />
+            <input type="hidden" name="category" value="@category" />
+            <div><label>Select photos</label><input type="file" name="files" accept="image/jpeg,image/png,image/webp,image/heic" multiple required /></div>
+            <div><label>Notes for this upload</label><input name="notes" placeholder="Optional notes" /></div>
+            @if (canPublish) { <label class="check"><input type="checkbox" name="isClientVisible" value="true" /> Approved for client tracking</label> }
+            <button type="submit" class="btn btn-primary">Upload @category</button>
+        </form>
+        @if (photos.Any())
+        {
+            <div class="photo-grid mt-3">
+            @foreach (var photo in photos)
+            {
+                <article class="photo-card">
+                    <a href="@photo.FilePath" target="_blank" rel="noopener"><img src="@photo.FilePath" alt="@category for @Model.Vehicle?.RegNumber" loading="lazy" /></a>
+                    <small>@photo.UploadedAt.ToString("dd MMM yyyy HH:mm")</small>
+                    @if (!string.IsNullOrWhiteSpace(photo.Notes)) { <p>@photo.Notes</p> }
+                    @if (canPublish)
+                    {
+                        <form asp-action="SetPhotoVisibility" method="post">
+                            <input type="hidden" name="id" value="@photo.Id" /><input type="hidden" name="repairJobId" value="@Model.Id" /><input type="hidden" name="isClientVisible" value="@(!photo.IsClientVisible)" />
+                            <button class="btn btn-sm @(photo.IsClientVisible ? "secondary" : "btn-primary")">@(photo.IsClientVisible ? "Hide from Client" : "Approve for Client")</button>
+                        </form>
+                    }
+                </article>
+            }
+            </div>
+        }
+        else { <p class="muted">No @category.ToLowerInvariant() uploaded yet.</p> }
+    </section>
+}

@@ -1,0 +1,166 @@
+@model AutoTracker.ViewModels.SearchResultViewModel
+
+@{
+    ViewData["Title"] = "Search";
+}
+
+<div class="page-header">
+    <h1>Search Everything</h1>
+    <p>Find clients, vehicles, repair jobs and RFID tags in one place.</p>
+</div>
+
+<form asp-action="Index" method="get" class="search-box mb-3">
+    <input name="q" value="@Model.SearchTerm" class="form-control" placeholder="Search REG, client, VIN, RFID, phone..." />
+    <button type="submit" class="btn btn-primary mt-2">Search</button>
+</form>
+
+@if (!string.IsNullOrWhiteSpace(Model.SearchTerm))
+{
+    <div class="dashboard-card mb-3">
+        <h3>Repair Jobs</h3>
+
+        @if (Model.RepairJobs.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>REG</th>
+                        <th>Client</th>
+                        <th>Status</th>
+                        <th>RFID</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var job in Model.RepairJobs)
+                    {
+                        <tr>
+                            <td>@job.Vehicle?.RegNumber</td>
+                            <td>@job.Client?.FullName</td>
+                            <td>@job.Status</td>
+                            <td>@job.RfidTagCode</td>
+                            <td>@job.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td>
+                                <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@job.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No repair jobs found.</p>
+        }
+    </div>
+
+    <div class="dashboard-card mb-3">
+        <h3>Clients</h3>
+
+        @if (Model.Clients.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var client in Model.Clients)
+                    {
+                        <tr>
+                            <td>@client.FullName</td>
+                            <td>@client.Phone</td>
+                            <td>@client.Email</td>
+                            <td>
+                                <a asp-controller="Clients" asp-action="Details" asp-route-id="@client.Id">Open</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No clients found.</p>
+        }
+    </div>
+
+    <div class="dashboard-card mb-3">
+        <h3>Vehicles</h3>
+
+        @if (Model.Vehicles.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>REG</th>
+                        <th>Make</th>
+                        <th>Model</th>
+                        <th>VIN</th>
+                        <th>Client</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var vehicle in Model.Vehicles)
+                    {
+                        <tr>
+                            <td>@vehicle.RegNumber</td>
+                            <td>@vehicle.Make</td>
+                            <td>@vehicle.ModelName</td>
+                            <td>@vehicle.VinNumber</td>
+                            <td>@vehicle.Client?.FullName</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No vehicles found.</p>
+        }
+    </div>
+
+    <div class="dashboard-card mb-3">
+        <h3>RFID Tags</h3>
+
+        @if (Model.RfidTags.Any())
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Tag</th>
+                        <th>Current Vehicle</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tag in Model.RfidTags)
+                    {
+                        <tr>
+                            <td>@tag.TagCode</td>
+                            <td>@tag.CurrentRepairJob?.Vehicle?.RegNumber</td>
+                            <td>
+                                <a asp-controller="RfidTags" asp-action="Details" asp-route-tagCode="@tag.TagCode">History</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>No RFID tags found.</p>
+        }
+    </div>
+}
+else
+{
+    <div class="dashboard-card">
+        <p>Type something above to search.</p>
+    </div>
+}

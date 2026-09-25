@@ -1,0 +1,61 @@
+@model List<AutoTracker.Models.RfidTag>
+@{
+    ViewData["Title"] = "RFID / QR Tags";
+}
+<div class="page-title"><div><h1>RFID / QR Tags</h1><p>Register printed tag codes, scan them, and open their assigned repair jobs.</p></div></div>
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+
+<section class="card">
+    <h3>Scan or Enter a Tag</h3>
+    <p class="muted">Camera scanning reads QR codes and common barcodes. NFC/RFID readers can type directly into the same field.</p>
+    <form asp-controller="RepairJobs" asp-action="Scan" method="get" class="stack">
+        <label for="rfidAdminTagInput">Tag code</label>
+        <input id="rfidAdminTagInput" name="tag" class="search-input" placeholder="Scan or type a tag code" required autocomplete="off" />
+        <div class="scanner-actions">
+            <button type="button" class="btn secondary" onclick="startTagScanner('rfidAdminVideo','rfidAdminTagInput','rfidAdminMessage')">Start Camera</button>
+            <button type="button" class="btn secondary" onclick="stopTagScanner('rfidAdminVideo')">Stop Camera</button>
+            <button type="submit" class="btn btn-primary">Open Assigned Job</button>
+            <button type="button" class="btn secondary" onclick="document.getElementById('newTagCode').value=document.getElementById('rfidAdminTagInput').value;document.getElementById('createTagForm').requestSubmit()">Register Tag</button>
+        </div>
+        <div id="rfidAdminMessage" aria-live="polite"></div>
+        <video id="rfidAdminVideo" class="scanner-video" hidden playsinline muted></video>
+    </form>
+    <form id="createTagForm" asp-action="Create" method="post"><input id="newTagCode" type="hidden" name="tagCode" /></form>
+</section>
+
+<section class="card">
+    <h3>Tag List</h3>
+    @if (!Model.Any()) { <p class="muted">No tags are registered yet.</p> }
+    else
+    {
+        <div class="table-responsive"><table class="table">
+            <thead><tr><th>Tag Code</th><th>Status</th><th>Current Job</th><th>Active</th><th>Actions</th></tr></thead>
+            <tbody>
+            @foreach (var tag in Model)
+            {
+                var available = tag.IsActive && tag.CurrentRepairJobId == null;
+                <tr>
+                    <td><strong>@tag.TagCode</strong></td>
+                    <td>@(available ? "Available" : tag.CurrentRepairJobId != null ? "Assigned" : "Inactive")</td>
+                    <td>@if (tag.CurrentRepairJob != null) { <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@tag.CurrentRepairJobId">@tag.CurrentRepairJob.Vehicle?.RegNumber — @tag.CurrentRepairJob.Client?.FullName</a> } else { <span>—</span> }</td>
+                    <td>@(tag.IsActive ? "Yes" : "No")</td>
+                    <td>
+                        <div class="action-row">
+                            <a asp-action="Details" asp-route-tagCode="@tag.TagCode" class="btn btn-sm secondary">History</a>
+                            @if (tag.CurrentRepairJobId != null)
+                            {
+                                <form asp-action="RemoveAssignment" method="post"><input type="hidden" name="id" value="@tag.Id" /><button class="btn btn-sm secondary">Unassign</button></form>
+                            }
+                            <form asp-action="Update" method="post">
+                                <input type="hidden" name="id" value="@tag.Id" /><input type="hidden" name="tagCode" value="@tag.TagCode" /><input type="hidden" name="isActive" value="@(!tag.IsActive)" />
+                                <button class="btn btn-sm @(tag.IsActive ? "danger" : "btn-primary")">@(tag.IsActive ? "Deactivate" : "Activate")</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</section>

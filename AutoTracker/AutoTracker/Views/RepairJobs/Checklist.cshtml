@@ -1,0 +1,65 @@
+@model AutoTracker.Models.RepairJob
+@{
+    ViewData["Title"] = "Checklist";
+    var checklistItems = ViewBag.ChecklistItems as List<AutoTracker.Models.ChecklistItem> ?? new List<AutoTracker.Models.ChecklistItem>();
+    var groupedItems = checklistItems.GroupBy(x => x.Section);
+}
+
+<div class="page-title">
+    <h1>Checklist - @Model.Vehicle?.RegNumber</h1>
+    <p>Update everything, then press one save button at the bottom.</p>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert success">@TempData["Success"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert danger">@TempData["Error"]</div>
+}
+
+<div class="action-row">
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn secondary">Back to Job</a>
+    <a asp-action="ChecklistPdf" asp-route-id="@Model.Id" target="_blank" class="btn">Print / Save PDF</a>
+</div>
+
+<form asp-action="SaveChecklistItems" method="post" class="card form-wide">
+    <input type="hidden" name="repairJobId" value="@Model.Id" />
+    @if (checklistItems.Any())
+    {
+        foreach (var group in groupedItems)
+        {
+            <div class="check-section">
+                <h3>@group.Key</h3>
+                <table class="clean-table">
+                    <thead><tr><th>Item</th><th>Status</th><th>Notes</th></tr></thead>
+                    <tbody>
+                    @foreach (var item in group)
+                    {
+                        <tr>
+                            <td><strong>@item.ItemName</strong></td>
+                            <td>
+                                <select name="condition_@item.Id">
+                                    <option value="Not Checked" selected="@(item.Condition == "Not Checked")">Not Checked</option>
+                                    <option value="Good" selected="@(item.Condition == "Good")">Good</option>
+                                    <option value="Damaged" selected="@(item.Condition == "Damaged")">Damaged</option>
+                                    <option value="Missing" selected="@(item.Condition == "Missing")">Missing</option>
+                                    <option value="N/A" selected="@(item.Condition == "N/A")">N/A</option>
+                                </select>
+                            </td>
+                            <td><input name="notes_@item.Id" value="@item.Notes" placeholder="Notes" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        <button type="submit" class="btn">Save Full Checklist</button>
+    }
+    else
+    {
+        <p>No checklist items found.</p>
+    }
+</form>

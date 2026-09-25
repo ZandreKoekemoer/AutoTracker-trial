@@ -1,0 +1,104 @@
+@model AutoTracker.ViewModels.TechnicianWorkloadViewModel
+@{
+    ViewData["Title"] = "User Jobs";
+    var appUsers = ViewBag.AppUsers as List<AutoTracker.Models.AppUser> ?? new List<AutoTracker.Models.AppUser>();
+    var selectedUserId = ViewBag.SelectedUserId as int?;
+}
+
+<div class="dashboard-header">
+    <div>
+        <h1>User Jobs</h1>
+        <p>Assign jobs to company users and filter each person’s active workload.</p>
+    </div>
+</div>
+
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+@if (TempData["Success"] != null) { <div class="alert success">@TempData["Success"]</div> }
+
+<div class="dashboard-card mb-3">
+    <h3>View jobs by user</h3>
+    <form asp-action="Index" method="get" class="d-flex gap-2">
+        <select name="userId" class="form-control">
+            <option value="">-- All users --</option>
+            @foreach (var user in appUsers)
+            {
+                <option value="@user.Id" selected="@(selectedUserId == user.Id)">@user.FullName</option>
+            }
+        </select>
+        <button class="btn btn-primary">View</button>
+        <a asp-action="Index" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+@if (!selectedUserId.HasValue)
+{
+    <div class="dashboard-card mb-3">
+        <h3>Unassigned Jobs</h3>
+        @if (Model.UnassignedJobs.Any())
+        {
+            <table class="table">
+                <thead><tr><th>REG</th><th>Client</th><th>Status</th><th>Assign User</th></tr></thead>
+                <tbody>
+                @foreach (var job in Model.UnassignedJobs)
+                {
+                    <tr>
+                        <td>@job.Vehicle?.RegNumber</td>
+                        <td>@job.Client?.FullName</td>
+                        <td>@job.Status</td>
+                        <td>
+                            <form asp-action="AssignTechnician" method="post" class="d-flex gap-2">
+                                <input type="hidden" name="repairJobId" value="@job.Id" />
+                                <select name="technicianUserId" class="form-control">
+                                    <option value="">-- Choose user --</option>
+                                    @foreach (var user in appUsers)
+                                    {
+                                        <option value="@user.Id">@user.FullName</option>
+                                    }
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-primary">Assign</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else { <p>No unassigned jobs.</p> }
+    </div>
+}
+
+<div class="dashboard-grid">
+    @foreach (var userGroup in Model.Technicians)
+    {
+        <div class="dashboard-card">
+            <h3>@userGroup.TechnicianName</h3>
+            <p><strong>@userGroup.Jobs.Count</strong> active jobs</p>
+
+            @foreach (var job in userGroup.Jobs)
+            {
+                <div class="border rounded p-2 mb-2">
+                    <strong>@job.Vehicle?.RegNumber</strong>
+                    <p>@job.Vehicle?.Make @job.Vehicle?.ModelName</p>
+                    <p>@job.Client?.FullName</p>
+                    <span class="status-pill">@job.Status</span>
+
+                    <div class="mt-2">
+                        <a asp-controller="RepairJobs" asp-action="Details" asp-route-id="@job.Id" class="btn btn-sm btn-secondary">Open</a>
+                    </div>
+
+                    <form asp-action="AssignTechnician" method="post" class="mt-2">
+                        <input type="hidden" name="repairJobId" value="@job.Id" />
+                        <select name="technicianUserId" class="form-control mb-2">
+                            <option value="">-- Unassigned --</option>
+                            @foreach (var user in appUsers)
+                            {
+                                <option value="@user.Id" selected="@(job.AssignedTechnicianUserId == user.Id)">@user.FullName</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary w-100">Update Assigned User</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+</div>

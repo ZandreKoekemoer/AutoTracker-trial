@@ -1,0 +1,5 @@
+@model IEnumerable<Vehicle>
+@{ ViewData["Title"] = "Vehicles"; }
+<div class="hero"><div><div class="title">Vehicles</div><div class="subtitle">Search by REG, make or model.</div></div><a class="btn" asp-action="Create">Add Vehicle</a></div>
+<form><input name="search" placeholder="Search vehicles..." /></form>
+<table class="table"><tr><th>REG</th><th>Client</th><th>Vehicle Type</th><th>Make</th><th>Model</th><th>VIN</th></tr>@foreach(var v in Model){<tr><td>@v.RegNumber</td><td>@v.Client?.FullName</td><td>@v.VehicleType</td><td>@v.Make</td><td>@v.ModelName</td><td>@v.VinNumber</td></tr>}</table>

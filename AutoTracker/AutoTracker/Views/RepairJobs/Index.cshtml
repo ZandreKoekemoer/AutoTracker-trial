@@ -1,0 +1,12 @@
+@model IEnumerable<RepairJob>
+@{
+    ViewData["Title"] = "Repair Jobs";
+    var _role = Context.Session.GetString("UserRole") ?? "";
+    var _canCreate = _role != "Technician";
+}
+<div class="hero">
+    <div><div class="title">Repair Jobs</div><div class="subtitle">Open a complete digital repair file.</div></div>
+    @if (_canCreate) { <a class="btn" asp-action="Create">New Job</a> }
+</div>
+<form><input name="search" placeholder="Search REG, client, RFID, status..." /></form>
+<table class="table"><tr><th>Date</th><th>Client</th><th>REG</th><th>Vehicle</th><th>RFID</th><th>Status</th><th></th></tr>@foreach(var j in Model){<tr><td>@j.CreatedAt.ToShortDateString()</td><td>@j.Client?.FullName</td><td>@j.Vehicle?.RegNumber</td><td>@j.Vehicle?.VehicleType</td><td>@j.RfidTagCode</td><td><span class="badge">@j.Status</span></td><td><a class="btn secondary" asp-action="Details" asp-route-id="@j.Id">Open</a></td></tr>}</table>

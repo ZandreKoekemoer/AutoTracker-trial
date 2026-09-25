@@ -1,0 +1,76 @@
+@model RepairJob
+@{
+    ViewData["Title"] = "New Repair Job";
+    var appUsers = ViewBag.AppUsers as List<AutoTracker.Models.AppUser> ?? new List<AutoTracker.Models.AppUser>();
+    var availableTags = ViewBag.AvailableRfidTags as List<AutoTracker.Models.RfidTag> ?? new List<AutoTracker.Models.RfidTag>();
+}
+
+<div class="page-title">
+    <h1>New Repair Job</h1>
+    <p>Create a job from an existing vehicle, or type the customer and vehicle details here.</p>
+</div>
+
+@if (TempData["Error"] != null) { <div class="alert danger">@TempData["Error"]</div> }
+
+<form asp-action="Create" method="post" class="card form-wide">
+    <h3>Use Existing Vehicle</h3>
+    <label>Existing Vehicle</label>
+    <select asp-for="VehicleId" asp-items="ViewBag.VehicleId">
+        <option value="0">-- Create new client and vehicle below --</option>
+    </select>
+
+    <div class="section-divider">OR CREATE NEW</div>
+
+    <div class="form-grid">
+        <div>
+            <h3>Client</h3>
+            <label>Client Name</label><input name="ClientName" placeholder="Customer / company name" />
+            <label>Phone</label><input name="ClientPhone" />
+            <label>Email</label><input name="ClientEmail" />
+            <label>Address</label><textarea name="ClientAddress"></textarea>
+        </div>
+        <div>
+            <h3>Vehicle</h3>
+            <label>Registration</label><input name="RegNumber" placeholder="REG number" />
+            <label>Vehicle Type</label><input name="VehicleType" placeholder="Toyota Hilux, BMW X5, etc." />
+            <label>Make</label><input name="Make" />
+            <label>Model</label><input name="ModelName" />
+            <label>VIN / Chassis Number</label><input name="VinNumber" />
+        </div>
+    </div>
+
+    <h3>Job Details</h3>
+    <div class="form-grid three">
+        <div>
+            <label>RFID/NFC Tag Code</label>
+            <p class="text-muted">Camera scan works with printed QR/barcodes on tags. Plain RFID chips still need a hardware reader/manual entry.</p>
+            <button type="button" class="btn secondary" onclick="startTagScanner('createRfidVideo','createRfidInput','createRfidScanMessage')">Scan QR / Barcode</button>
+            <button type="button" class="btn secondary" onclick="stopTagScanner('createRfidVideo')">Stop Camera</button>
+            <div id="createRfidScanMessage" class="mt-2" aria-live="polite"></div>
+            <video id="createRfidVideo" class="scanner-video" hidden playsinline muted></video>
+            <input id="createRfidInput" asp-for="RfidTagCode" list="available-rfid-tags" placeholder="Scan, type, or choose tag" />
+            <datalist id="available-rfid-tags">
+                @foreach (var tag in availableTags)
+                {
+                    <option value="@tag.TagCode"></option>
+                }
+            </datalist>
+        </div>
+        <div><label>Status</label><input value="Booked In" readonly /><input asp-for="Status" type="hidden" value="Booked In" /></div>
+        <div><label>Estimated Completion</label><input asp-for="EstimatedCompletionDate" type="datetime-local" /></div>
+        <div>
+            <label>Assigned Technician</label>
+            <select asp-for="AssignedTechnicianUserId">
+                <option value="">-- Choose technician --</option>
+                @foreach (var user in (ViewBag.AppUsers as List<AutoTracker.Models.AppUser> ?? new List<AutoTracker.Models.AppUser>()))
+                {
+                    <option value="@user.Id">@user.FullName</option>
+                }
+            </select>
+        </div>
+        <div><label>Priority</label><select asp-for="Priority"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+    </div>
+
+    <label>Notes</label><textarea asp-for="Notes"></textarea>
+    <button class="btn">Create Job File</button>
+</form>
